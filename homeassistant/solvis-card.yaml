@@ -1,0 +1,48 @@
+# Solvis Control Card (LarsK1/hass_solvis_frontend) mit den Entities des SolvisSmartHomeServers.
+#
+# Entity-Ids des Servers: <domain>.solvis_<unitId>_<kanal-id>, hier fuer die Unit "SolvisMax".
+# Fuer eine andere Unit "solvismax" im Namen ersetzen. Rollen ohne Kanal in der eigenen Konfiguration
+# leer lassen (die Karte zeigt dann einen Platzhalter).
+#
+# Anlage: SolvisMax Futur mit SolvisLino (mainHeating Pellet), zwei Heizkreise, Solar, keine Waermepumpe.
+type: custom:solvis-card
+title: Solvis
+model: max
+mode: both            # heating | hot_water | both
+show_legend: false
+features:
+  solar: true
+  heat_pump: false
+  hot_water: true
+  smart_grid: false
+  circuits: 2
+entities:
+  # Aussen und Speicher
+  outdoor_temperature: sensor.solvis_solvismax_s10      # S10 Aussentemperatur
+  buffer_top_temp: sensor.solvis_solvismax_s04          # S4 Heizungspuffer oben
+  buffer_bottom_temp: sensor.solvis_solvismax_s09       # S9 Heizungspuffer unten
+  storage_ref_temp: sensor.solvis_solvismax_s03         # S3 Speicherreferenz
+  ww_buffer_temp: sensor.solvis_solvismax_s01           # S1 Warmwasserpuffer (Speicher oben)
+  # Solar
+  flow_rate: sensor.solvis_solvismax_s17                # S17 Durchfluss Solar
+  pump_speed: sensor.solvis_solvismax_a01               # A1 Solarpumpe (%)
+  # Waermeerzeuger (Pelletkessel ueber O-1)
+  boiler_temperature: sensor.solvis_solvismax_s14       # S14 Kesseltemperatur
+  burner_status: binary_sensor.solvis_solvismax_a12     # A12 Brenneranforderung
+  burner_modulation: sensor.solvis_solvismax_o_1        # O-1 Modulation (Anforderung analog)
+  # Warmwasser
+  hot_water_temperature: sensor.solvis_solvismax_s02    # S2 Warmwassertemperatur
+  ww_current_temp: sensor.solvis_solvismax_s02
+  ww_target_temp: number.solvis_solvismax_c05           # C05 Warmwasser Solltemperatur
+  ww_flow_rate: sensor.solvis_solvismax_s18             # S18 Durchfluss Warmwasser
+  ww_pump_speed: sensor.solvis_solvismax_a02            # A2 Warmwasserpumpe (%)
+  hot_water_priority: ""                                # kein Kanal
+  cw_temp: ""                                           # S15 Kaltwasser, nicht in dieser Konfiguration
+  # Zirkulation
+  circulation_temp: sensor.solvis_solvismax_s11         # S11 Zirkulation Ruecklauf
+  circulation_pump: binary_sensor.solvis_solvismax_a05  # A5 Zirkulationspumpe
+  circulation_mode: sensor.solvis_zirkulation_modus     # Template-Sensor, siehe README (0 Aus, 1 Puls, 2 Zeit, 3 Puls/Zeit)
+  # Heizkreise
+  hc_pump_status: binary_sensor.solvis_solvismax_a03    # A3 Pumpe HK1
+  hc2_pump_status: binary_sensor.solvis_solvismax_a04   # A4 Pumpe HK2
+  hc3_pump_status: ""                                   # kein HK3
