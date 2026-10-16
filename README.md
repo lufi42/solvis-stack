@@ -1,0 +1,56 @@
+# solvis-stack
+
+Werkzeuge und Dokumentation, um eine Solvis-Heizung ins Smart Home (Home Assistant, MQTT) zu holen:
+
+* **Speicher SolvisMax** mit Regler **SolvisControl 2** (SC2) über die SolvisRemote
+* **Pelletkessel SolvisLino 3** (gebaut von Windhager) über den internen LON-Bus
+
+Die Software ist für beliebige Solvis-Konfigurationen gedacht; die ALS-MAX-Kapitel sind als
+[Templates](docs/templates/README.md) dokumentiert. Dieses Projekt ist nicht mit der Solvis GmbH verbunden.
+
+## Teile
+
+| Ordner | Teil | Weg zur Anlage | Stand |
+| --- | --- | --- | --- |
+| [SolvisSmartHomeServer/](SolvisSmartHomeServer) | SolvisMax / SC2 lesen und steuern, HA-Discovery | SolvisRemote-Web-GUI (OCR + simulierte Klicks) → MQTT | läuft, HA-Discovery eingebaut |
+| [lino-lon/](lino-lon) | Lino über LON auslesen (und eingeschränkt steuern) | ESP32 am internen LON-Bus (Servicestecker SST) → MQTT | Konzept, Hardware offen |
+| [homeassistant/](homeassistant) | HA-Konfiguration für beide Teile | – | Gerüst |
+| [docs/](docs) | Kopplung Max↔Lino, LON-Protokoll, Fehlercodes, SC2-Screens, Templates | – | |
+| [third_party/](third_party) | Referenz-Repos von g3gg0 (MESWiFi, LonScan, LonDissector) | – | Submodule, nicht ändern |
+
+## Wer steuert was
+
+Die **SC2 steuert den Kessel** über 0–10 V (Anforderung und Modulation). Es gibt keine LON-Verbindung
+zwischen SolvisMax und Lino. Daraus ergibt sich die Aufteilung:
+
+* **Sollwerte, Modi, Warmwasser, Heizkreise:** SolvisSmartHomeServer → SC2
+* **Kesselinterna** (Brennerzustand, Leistung, Abgas, Fördermenge, Zähler, Fehlercodes): lino-lon
+
+Details in [docs/lino-kopplung.md](docs/lino-kopplung.md), Protokoll in [docs/lon-protokoll.md](docs/lon-protokoll.md).
+
+## Repos
+
+* Dieses Repo ist der Rahmen: Doku, lino-lon, HA-Konfiguration.
+* `SolvisSmartHomeServer` ist ein eigenes Repo und als Submodul eingebunden. Es ist ein Fork
+  ([lufi42](https://github.com/lufi42/SolvisSmartHomeServer)) von
+  [GollmerSt](https://github.com/GollmerSt/SolvisSmartHomeServer), damit Upstream-Änderungen weiter
+  gemergt werden können.
+* `third_party/*` sind Submodule auf die g3gg0-Repos.
+
+```sh
+git clone --recurse-submodules <url>
+# oder nachträglich
+git submodule update --init --recursive
+```
+
+## SolvisSmartHomeServer bauen
+
+Es gibt kein Ant/Maven im PATH. Die Quellen sind **Cp1252**-kodiert, nicht UTF-8:
+
+```sh
+cd SolvisSmartHomeServer
+find src -name '*.java' > /tmp/files.txt
+javac -encoding Cp1252 --release 8 -d build/classes -cp "$(ls lib/*.jar | tr '\n' ';')" @/tmp/files.txt
+```
+
+Alternativ `build.xml` mit Ant oder Eclipse.

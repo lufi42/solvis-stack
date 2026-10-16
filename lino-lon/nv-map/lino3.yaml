@@ -1,0 +1,35 @@
+# NV-Map SolvisLino 3 (LON)
+# Startwerte aus MESWiFi (Windhager-Anlage von g3gg0). verified: false = am eigenen Kessel noch nicht bestätigt.
+# Typen und Dekodierung: ../../docs/lon-protokoll.md
+
+bus:
+  subnet: 1
+  own_node: 127
+
+nodes:
+  kessel:
+    node: 60
+    verified: false
+    poll:
+      - { nv: 0x07, type: SNVT_count,     id: fehlercode,       name: Fehlercode }
+      - { nv: 0x10, type: DISP,           id: zustand,          name: Zustand }
+      - { nv: 0x12, type: SNVT_rpm,       id: drehzahl,         name: Drehzahl }
+      - { nv: 0x15, type: SNVT_mass_kilo, id: foerder-soll,     name: Fördermenge/h soll }
+      - { nv: 0x1B, type: SNVT_mass_kilo, id: foerder-berech,   name: Fördermenge/h berechnet }
+      - { nv: 0x23, type: SNVT_lev_cont,  id: leistung-soll,    name: Leistung soll }
+      - { nv: 0x25, type: SNVT_lev_cont,  id: leistung,         name: Leistung ist }
+      - { nv: 0x2A, type: SNVT_time_hour, id: betriebsstunden,  name: Betriebsstunden }
+      - { nv: 0x2B, type: SNVT_count,     id: anheiz-count,     name: Anheizzähler }
+      - { nv: 0x2F, type: SNVT_temp,      id: temp-kammer,      name: Temperatur Brennkammer }
+      - { nv: 0x30, type: SNVT_temp_p,    id: temp-schaltfeld,  name: Temperatur Schaltfeld }
+      - { nv: 0x31, type: SNVT_temp,      id: temp-abgas,       name: Temperatur Abgas }
+      - { nv: 0x32, type: SNVT_temp_p,    id: temp-kessel-soll, name: Temperatur Kessel soll }
+
+selectors:
+  - { sel: 0x000, type: SNVT_temp_p, id: temp-aussen,          name: Temperatur Außen,               verified: false }
+  - { sel: 0x010, type: SNVT_temp_p, id: temp-vorlauf-soll-hk, name: Vorlauf soll Heizkreis,         verified: false }
+  - { sel: 0x012, type: SNVT_temp_p, id: temp-vorlauf-soll-ww, name: Vorlauf soll Warmwasser,        verified: false, writable: true }
+  - { sel: 0x01B, type: SNVT_temp_p, id: temp-speicher,        name: Temperatur Speicher,            verified: false }
+  - { sel: 0x072, type: SNVT_temp_p, id: temp-soll-ww,         name: Temperatur Warmwasser soll,     verified: false }
+  - { sel: 0x101, type: SNVT_count,  id: fehlercode,           name: Fehlercode,                     verified: false }
+  - { sel: 0x110, type: SNVT_temp_p, id: temp-kessel,          name: Temperatur Kessel,              verified: false }

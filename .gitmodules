@@ -1,0 +1,12 @@
+[submodule "SolvisSmartHomeServer"]
+	path = SolvisSmartHomeServer
+	url = https://github.com/lufi42/SolvisSmartHomeServer
+[submodule "third_party/MESWiFi"]
+	path = third_party/MESWiFi
+	url = https://github.com/g3gg0/MESWiFi
+[submodule "third_party/LonScan"]
+	path = third_party/LonScan
+	url = https://github.com/g3gg0/LonScan
+[submodule "third_party/LonDissector"]
+	path = third_party/LonDissector
+	url = https://github.com/g3gg0/LonDissector

@@ -1,0 +1,15 @@
+# PlatformIO
+lino-lon/firmware/**/.pio/
+lino-lon/firmware/**/.vscode/
+
+# Lokale Zugangsdaten
+**/secrets.h
+**/secrets.yaml
+
+# LonScan-Laufzeitkonfiguration und Mitschnitte
+LonScan.cfg
+*.pcapng
+
+# OS / Editor
+.DS_Store
+Thumbs.db
