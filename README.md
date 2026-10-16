@@ -57,7 +57,6 @@ Alternativ `build.xml` mit Ant oder Eclipse.
 
 ## Lizenz
 
-Inhalt dieses Repos (Dokumentation, Skripte, Bildschirmfotos): [CC BY-NC-SA 4.0](LICENSE). Nutzung, Weitergabe und
-Bearbeitung sind erlaubt mit Namensnennung, unter gleichen Bedingungen und **nicht kommerziell**. Die Submodule
+Inhalt dieses Repos (Dokumentation, Skripte, Bildschirmfotos): [MIT](LICENSE). Die Submodule
 (SolvisSmartHomeServer, MESWiFi, LonScan, LonDissector) haben eigene Lizenzen ihrer Autoren. Solvis, SolvisMax,
 SolvisControl und SolvisLino sind Marken der Solvis GmbH.
