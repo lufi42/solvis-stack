@@ -40,6 +40,8 @@ Details in [docs/lino-kopplung.md](docs/lino-kopplung.md), Protokoll in [docs/lo
   `.gitmodules` mit `update = none` markiert, `git submodule update --init --recursive` lässt es deshalb aus und
   der Rest des Repos funktioniert ohne. Wer Zugriff hat: `git submodule update --init anlage` bzw.
   `git -c submodule.anlage.update=checkout submodule update --init anlage`.
+  Wer solvis-stack forkt, kann an derselben Stelle sein eigenes Anlagen-Repo einhängen
+  (`git submodule set-url anlage <eigene url>`): Doku und Werkzeuge bleiben gemeinsam, die Anlage bleibt privat.
 
 ```sh
 git clone --recurse-submodules <url>
