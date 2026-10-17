@@ -36,6 +36,10 @@ Details in [docs/lino-kopplung.md](docs/lino-kopplung.md), Protokoll in [docs/lo
   [GollmerSt](https://github.com/GollmerSt/SolvisSmartHomeServer), damit Upstream-Änderungen weiter
   gemergt werden können.
 * `third_party/*` sind Submodule auf die g3gg0-Repos.
+* `anlage/` ist ein **privates** Submodul (eigene Anlage, Pläne, Auswertungen) auf einem eigenen Git-Server. Es ist in
+  `.gitmodules` mit `update = none` markiert, `git submodule update --init --recursive` lässt es deshalb aus und
+  der Rest des Repos funktioniert ohne. Wer Zugriff hat: `git submodule update --init anlage` bzw.
+  `git -c submodule.anlage.update=checkout submodule update --init anlage`.
 
 ```sh
 git clone --recurse-submodules <url>
