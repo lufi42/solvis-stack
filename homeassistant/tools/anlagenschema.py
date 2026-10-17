@@ -13,7 +13,8 @@ Aufruf:
 
 Ergebnis im Ausgabeordner:
   schema.jpg, label_<id>_on.png / _off.png   -> nach /config/www/solvis/ kopieren
-  anlagenschema.yaml                          -> Karte (type: picture-elements), ins Dashboard einfuegen
+  anlagenschema.yaml                          -> Karte (type: picture-elements), ins Dashboard einfuegen;
+                                                 am besten in eine Ansicht vom Typ "Panel" (volle Breite)
   preview.png (mit --preview key=wert ...)    -> Vorschau mit Beispielwerten
 
 Die Koordinaten in getPosition.xml sind Seitenkoordinaten der Remote-Oberflaeche; relativ zum Bild
@@ -99,12 +100,15 @@ def pct(v, total):
     return f'{v / total * 100:.2f}%'
 
 
+# Alle Masse relativ zum Bild (950x550), damit die Kaestchen mit dem Bild skalieren. Die Schriftgroesse kann
+# CSS nur auf die Fensterbreite beziehen: 1.2vw passt fuer eine Panel-Ansicht (Karte ueber die ganze Breite).
 BOX_STYLE = {
     'left': None, 'top': None, 'transform': 'none',
-    'width': '94px', 'height': '18px', 'padding': '0 0 0 2px', 'box-sizing': 'content-box',
+    'width': pct(BOX_W, IMG_W), 'height': pct(BOX_H, IMG_H), 'padding': '0', 'box-sizing': 'border-box',
     'border': '2px solid #808080', 'background-color': '#E6E6E6', 'color': '#707070',
-    'font-family': 'Calibri, "Segoe UI", Arial, sans-serif', 'font-size': '10pt', 'font-weight': 'bold',
-    'line-height': '18px', 'text-align': 'left', 'white-space': 'nowrap', 'overflow': 'hidden',
+    'font-family': 'Calibri, "Segoe UI", Arial, sans-serif', 'font-size': 'clamp(7px, 1.2vw, 24px)',
+    'font-weight': 'bold', 'line-height': '1.3', 'text-align': 'left', 'text-indent': '0.3em',
+    'white-space': 'nowrap', 'overflow': 'hidden', 'display': 'flex', 'align-items': 'center',
 }
 
 
@@ -124,7 +128,7 @@ def build_yaml(items, unit, image_url, label_url_prefix):
         if it['id'].startswith('A'):
             on_img = f'{label_url_prefix}label_{it["id"].lower()}_on.png'
             off_img = f'{label_url_prefix}label_{it["id"].lower()}_off.png'
-            img_style = f'style: {{left: {left}, top: {top}, transform: none, width: {BOX_W}px}}'
+            img_style = f'style: {{left: {left}, top: {top}, transform: none, width: {pct(BOX_W, IMG_W)}}}'
             if it['id'] in PERCENT_ACTUATORS:
                 # Drehzahl in Prozent: 0 = aus, alles andere = an
                 off_states = '["0", "0.0", "unavailable", "unknown"]'
@@ -141,7 +145,7 @@ def build_yaml(items, unit, image_url, label_url_prefix):
                           '  - type: image', f'    entity: {ent}', f'    image: {off_img}',
                           '    state_image:', f'      "on": {on_img}', f'      "off": {off_img}',
                           '    tap_action: {action: more-info}',
-                          f'    style: {{left: {left}, top: {top}, transform: none, width: {BOX_W}px}}']
+                          f'    style: {{left: {left}, top: {top}, transform: none, width: {pct(BOX_W, IMG_W)}}}']
         else:
             style = dict(BOX_STYLE)
             style['left'], style['top'] = left, top
