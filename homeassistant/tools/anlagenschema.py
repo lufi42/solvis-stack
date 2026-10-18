@@ -33,7 +33,9 @@ import xml.etree.ElementTree as ET
 
 IMG_W, IMG_H = 950, 550
 OFF_X, OFF_Y = -25, -90
-BOX_W, BOX_H = 98, 22          # 94x18 Inhalt + 2 px Rahmen, wie in der Remote
+BOX_W, BOX_H = 98, 22          # 94x18 Inhalt + 2 px Rahmen, wie in der Remote (Faktor 1.0)
+FONT_PX = 13                   # Schriftgroesse der Remote (10pt) bei Faktor 1.0
+PITCH = 24                     # vertikaler Abstand gestapelter Kaestchen in der Remote
 GREY, GREEN, BORDER, TEXT = (0xE6, 0xE6, 0xE6), (0xA0, 0xED, 0x80), (0x80, 0x80, 0x80), (0x70, 0x70, 0x70)
 DARK_BG = (0x1C, 0x1C, 0x1C)   # Hintergrund der Dark-Mode-Variante des Bildes
 FONT_CANDIDATES = ['C:/Windows/Fonts/calibrib.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
@@ -81,6 +83,28 @@ def load_items(xml_bytes):
         items.append({'id': it.get('id').strip(), 'text': (it.get('text') or '').strip(),
                       'x': x + OFF_X, 'y': y + OFF_Y})
     return items
+
+
+def scale_items(items, sx, sy):
+    """Kaestchen vergroessern: Breite mal sx, Hoehe/Schrift mal sy. Kaestchen links der Warmwasser-/Heizkreis-
+    Rahmen (x < 600, also Solar, Kessel, Speicher) wachsen nach links, die rechten und die Aussentemperatur nach rechts. Gestapelte
+    Kaestchen (gleiche x, Abstand PITCH) behalten ihre Oberkante und werden mit Faktor sy gespreizt."""
+    out = []
+    by_col = {}
+    for it in sorted(items, key=lambda i: (i['x'], i['y'])):
+        by_col.setdefault(it['x'], []).append(it)
+    for x, col in by_col.items():
+        top = None
+        prev_y = None
+        for it in col:
+            if prev_y is None or it['y'] - prev_y > PITCH + 6:
+                top = it['y']
+            ny = top + (it['y'] - top) * sy
+            # rechts wachsen: Warmwasser/Heizkreise (x >= 600) und die Aussentemperatur oben (y < 100), sonst links
+            nx = x if (x >= 600 or it['y'] < 100) else x + BOX_W - BOX_W * sx
+            out.append(dict(it, x=int(round(nx)), y=int(round(ny))))
+            prev_y = it['y']
+    return out
 
 
 def load_font(size):
@@ -142,7 +166,8 @@ def js_str(s):
     return "'" + str(s).replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
-def build_yaml(items, unit, image_url, dark_image_url):
+def build_yaml(items, unit, image_url, dark_image_url, sx=1.0, sy=1.0):
+    bw, bh, fs = round(BOX_W * sx), round(BOX_H * sy), round(FONT_PX * sy, 1)
     vals, acts, entities = [], [], []
     for it in items:
         ent = entity_for(it['id'], unit)
@@ -176,8 +201,8 @@ def build_yaml(items, unit, image_url, dark_image_url):
   const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const vals = {js_array(vals)};
   const acts = {js_array(acts)};
-  const box = (x, y, t, f) => '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="{BOX_W - 2}" height="{BOX_H - 2}" fill="' + f + '" stroke="' + bd + '" stroke-width="2"/>'
-    + '<text x="' + (x + 5) + '" y="' + (y + 15.5) + '" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="13" font-weight="bold" fill="' + fg + '">' + esc(t) + '</text>';
+  const box = (x, y, t, f) => '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="{bw - 2}" height="{bh - 2}" fill="' + f + '" stroke="' + bd + '" stroke-width="2"/>'
+    + '<text x="' + (x + {round(5 * sx)}) + '" y="' + (y + {round(bh * 0.5 + fs * 0.36, 1)}) + '" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="{fs}" font-weight="bold" fill="' + fg + '">' + esc(t) + '</text>';
   let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {IMG_W} {IMG_H}" width="{IMG_W}" height="{IMG_H}">';
   for (const [x, y, e, l] of vals) s += box(x, y, fmt(e) + ' ' + l, bg);
   for (const [x, y, e, l] of acts) s += box(x, y, l, active(e) ? on : bg);
@@ -197,19 +222,20 @@ def build_yaml(items, unit, image_url, dark_image_url):
     return '\n'.join(lines) + '\n'
 
 
-def label_image(text, fill, font):
+def label_image(text, fill, font, bw=BOX_W, bh=BOX_H):
     from PIL import Image, ImageDraw
-    im = Image.new('RGB', (BOX_W, BOX_H), BORDER)
+    im = Image.new('RGB', (bw, bh), BORDER)
     d = ImageDraw.Draw(im)
-    d.rectangle([2, 2, BOX_W - 3, BOX_H - 3], fill=fill)
-    d.text((5, 3), text, fill=TEXT, font=font)
+    d.rectangle([2, 2, bw - 3, bh - 3], fill=fill)
+    d.text((5, (bh - font.size) // 2 - 1), text, fill=TEXT, font=font)
     return im
 
 
-def render_preview(image_bytes, items, unit, values, font, path):
+def render_preview(image_bytes, items, unit, values, font, path, sx=1.0, sy=1.0):
     from PIL import Image
     import io
     im = Image.open(io.BytesIO(image_bytes)).convert('RGB')
+    bw, bh = round(BOX_W * sx), round(BOX_H * sy)
     for it in items:
         ent = entity_for(it['id'], unit)
         if ent is None:
@@ -217,9 +243,9 @@ def render_preview(image_bytes, items, unit, values, font, path):
         v = values.get(it['id'], '')
         if it['id'].startswith('A'):
             on = v not in ('', '0', '0.0', 'off', 'False', 'false')
-            im.paste(label_image(it['text'], GREEN if on else GREY, font), (it['x'], it['y']))
+            im.paste(label_image(it['text'], GREEN if on else GREY, font, bw, bh), (it['x'], it['y']))
         else:
-            im.paste(label_image(f'{v} {it["text"]}'.strip(), GREY, font), (it['x'], it['y']))
+            im.paste(label_image(f'{v} {it["text"]}'.strip(), GREY, font, bw, bh), (it['x'], it['y']))
     im.save(path)
 
 
@@ -234,6 +260,8 @@ def main():
     ap.add_argument('--out', required=True, help='Ausgabeordner')
     ap.add_argument('--www', default='/local/solvis/', help='URL-Pfad der Bilder in HA (Standard /local/solvis/)')
     ap.add_argument('--preview', nargs='*', metavar='ID=WERT', help='Vorschau mit Beispielwerten, z.B. S1=62.7°C A1=1')
+    ap.add_argument('--scale-x', type=float, default=1.5, help='Breite der Kaestchen relativ zur Remote (Standard 1.5)')
+    ap.add_argument('--scale-y', type=float, default=1.35, help='Hoehe und Schrift relativ zur Remote (Standard 1.35)')
     args = ap.parse_args()
 
     if args.remote:
@@ -242,18 +270,19 @@ def main():
     else:
         image = open(args.files[0], 'rb').read()
         positions = open(args.files[1], 'rb').read()
-    items = load_items(positions)
+    items = scale_items(load_items(positions), args.scale_x, args.scale_y)
     os.makedirs(args.out, exist_ok=True)
     open(os.path.join(args.out, 'schema.jpg'), 'wb').write(image)
     open(os.path.join(args.out, 'schema_dark.jpg'), 'wb').write(make_dark(image))
 
     www = args.www if args.www.endswith('/') else args.www + '/'
-    yaml_text = build_yaml(items, args.unit, www + 'schema.jpg', www + 'schema_dark.jpg')
+    yaml_text = build_yaml(items, args.unit, www + 'schema.jpg', www + 'schema_dark.jpg', args.scale_x, args.scale_y)
     open(os.path.join(args.out, 'anlagenschema.yaml'), 'w', encoding='utf-8', newline='\n').write(yaml_text)
 
     if args.preview is not None:
         values = dict(kv.split('=', 1) for kv in args.preview)
-        render_preview(image, items, args.unit, values, load_font(13), os.path.join(args.out, 'preview.png'))
+        render_preview(image, items, args.unit, values, load_font(round(FONT_PX * args.scale_y)),
+                       os.path.join(args.out, 'preview.png'), args.scale_x, args.scale_y)
 
     print(f'{len(items)} Elemente, Dateien in {args.out}:')
     for it in items:
