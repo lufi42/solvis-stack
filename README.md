@@ -23,7 +23,7 @@ Die Software ist für beliebige Solvis-Konfigurationen gedacht; die ALS-MAX-Kapi
 Die **SC2 steuert den Kessel** über 0–10 V (Anforderung und Modulation). Es gibt keine LON-Verbindung
 zwischen SolvisMax und Lino. Daraus ergibt sich die Aufteilung:
 
-* **Sollwerte, Modi, Warmwasser, Heizkreise:** SolvisSmartHomeServer → SC2
+* **Sollwerte, Modi, Warmwasser, Heizkreise:** solvis2mqtt → SC2
 * **Kesselinterna** (Brennerzustand, Leistung, Abgas, Fördermenge, Zähler, Fehlercodes): lino-lon
 
 Details in [docs/lino-kopplung.md](docs/lino-kopplung.md), Protokoll in [docs/lon-protokoll.md](docs/lon-protokoll.md).
@@ -31,10 +31,10 @@ Details in [docs/lino-kopplung.md](docs/lino-kopplung.md), Protokoll in [docs/lo
 ## Repos
 
 * Dieses Repo ist der Rahmen: Doku, lino-lon, HA-Konfiguration.
-* `SolvisSmartHomeServer` ist ein eigenes Repo und als Submodul eingebunden. Es ist ein Fork
-  ([lufi42](https://github.com/lufi42/SolvisSmartHomeServer)) von
-  [GollmerSt](https://github.com/GollmerSt/SolvisSmartHomeServer), damit Upstream-Änderungen weiter
-  gemergt werden können.
+* [`solvis2mqtt`](https://github.com/lufi42/solvis2mqtt) ist ein eigenes Repo und als Submodul eingebunden.
+  Es führt den [SolvisSmartHomeServer](https://github.com/GollmerSt/SolvisSmartHomeServer) von GollmerSt
+  unter eigenem Namen und mit Semantic Versioning (ab 1.0.0) weiter; Upstream-Änderungen können weiter
+  gemergt werden.
 * `third_party/*` sind Submodule auf die g3gg0-Repos.
 * `anlage/` ist ein **privates** Submodul (eigene Anlage, Pläne, Auswertungen) auf einem eigenen Git-Server. Es ist in
   `.gitmodules` mit `update = none` markiert, `git submodule update --init --recursive` lässt es deshalb aus und
@@ -64,5 +64,5 @@ Alternativ `build.xml` mit Ant oder Eclipse.
 ## Lizenz
 
 Inhalt dieses Repos (Dokumentation, Skripte, Bildschirmfotos): [MIT](LICENSE). Die Submodule
-(SolvisSmartHomeServer, MESWiFi, LonScan, LonDissector) haben eigene Lizenzen ihrer Autoren. Solvis, SolvisMax,
+(solvis2mqtt, MESWiFi, LonScan, LonDissector) haben eigene Lizenzen ihrer Autoren. Solvis, SolvisMax,
 SolvisControl und SolvisLino sind Marken der Solvis GmbH.
