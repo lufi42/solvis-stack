@@ -38,19 +38,23 @@ Geplante Inhalte, sobald die Entity-IDs aus der Discovery feststehen:
 
 Die SolvisRemote zeigt auf ihrer Seite `schema.html` das mit dem Solvis-Schema-Assistenten erzeugte Anlagenbild
 (`default.jpg`, 950×550) und legt die Werte an den Positionen aus `getPosition.xml` darüber. Beides lässt sich
-von der Remote herunterladen und als HA-Karte nachbauen, ohne eigenes Frontend:
-[tools/anlagenschema.py](tools/anlagenschema.py) erzeugt daraus eine `picture-elements`-Karte mit den Entities des
-SolvisSmartHomeServers und die Beschriftungsbilder der Aktoren (grau = aus, grün = an) im Stil der Remote.
+von der Remote herunterladen und in HA nachbauen: [tools/anlagenschema.py](tools/anlagenschema.py) erzeugt daraus
+eine Karte, die das Bild als Hintergrund nimmt und ein einziges SVG-Overlay darüberlegt. Das SVG baut die
+HACS-Karte [config-template-card](https://github.com/iantrich/config-template-card) bei jeder Zustandsänderung
+aus den Entities neu. Kästchen, Rahmen und Schrift sind damit Vektoren: Sie skalieren exakt mit dem Bild, bleiben
+in jeder Größe scharf und folgen dem Dark Mode von HA (dunkle Bildvariante `schema_dark.jpg` wird mitgeliefert).
 
 ```sh
 python homeassistant/tools/anlagenschema.py --remote http://<ip der remote> --unit SolvisMax --out ./schema
-# schema.jpg und label_*.png nach /config/www/solvis/ kopieren, anlagenschema.yaml als Karte einfügen
+# schema.jpg und schema_dark.jpg nach /config/www/solvis/ kopieren, anlagenschema.yaml als Karte einfügen
 ```
 
-Temperaturen, Durchfluss, Solarleistung und -ertrag erscheinen als Kästchen mit Kanal-Id (`63.4 °C S1`), die
+Voraussetzung ist config-template-card aus HACS. Die Karte passt sich der Spaltenbreite an; in einer
+Sections-Ansicht wirkt sie mit `column_span: 2` wie in der Remote, in einer Panel-Ansicht füllt sie die Seite.
+Temperaturen, Durchfluss, Solarleistung und -ertrag erscheinen als Kästchen mit Kanal-Id (`70,9 °C S1`), die
 Aktoren (Solaranlage, Warmwasser, Zirkulation, Heizkreise, Kessel) als Beschriftung, die bei laufender Pumpe bzw.
 Brenneranforderung grün wird. Welche Werte wo stehen, bestimmt allein die Konfiguration der Remote; ausgeblendete
-Werte (x/y = −1) werden übersprungen. Tippen auf ein Kästchen öffnet den Verlauf der Entity.
+Werte (x/y = −1) werden übersprungen, fehlende Entities zeigen „–“.
 
 ## Alternative: Solvis Control Card
 
