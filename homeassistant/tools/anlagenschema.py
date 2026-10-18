@@ -85,25 +85,37 @@ def load_items(xml_bytes):
     return items
 
 
-def scale_items(items, sx, sy):
-    """Kaestchen vergroessern: Breite mal sx, Hoehe/Schrift mal sy. Kaestchen links der Warmwasser-/Heizkreis-
-    Rahmen (x < 600, also Solar, Kessel, Speicher) wachsen nach links, die rechten und die Aussentemperatur nach rechts. Gestapelte
-    Kaestchen (gleiche x, Abstand PITCH) behalten ihre Oberkante und werden mit Faktor sy gespreizt."""
-    out = []
+def needs_wide(item_id):
+    """Beschriftungen und lange Werte (kWh, l/h, Drehzahl) brauchen die volle Breite, Temperaturen nicht."""
+    return item_id.startswith(('A', 'P')) or item_id in ('SE', 'SL', 'S17', 'S18')
+
+
+def scale_items(items, sx, sy, sx_short):
+    """Kaestchen vergroessern: Hoehe/Schrift mal sy, Breite mal sx bzw. sx_short fuer Stapel, die nur
+    Temperaturen enthalten. Kaestchen links der Warmwasser-/Heizkreis-Rahmen (x < 600, also Solar, Kessel,
+    Speicher) wachsen nach links, die rechten und die Aussentemperatur (y < 100) nach rechts. Gestapelte
+    Kaestchen (gleiche x, Abstand PITCH) behalten ihre Oberkante, werden mit sy gespreizt und sind gleich breit."""
     by_col = {}
     for it in sorted(items, key=lambda i: (i['x'], i['y'])):
         by_col.setdefault(it['x'], []).append(it)
+    stacks = []
     for x, col in by_col.items():
-        top = None
         prev_y = None
         for it in col:
             if prev_y is None or it['y'] - prev_y > PITCH + 6:
-                top = it['y']
-            ny = top + (it['y'] - top) * sy
-            # rechts wachsen: Warmwasser/Heizkreise (x >= 600) und die Aussentemperatur oben (y < 100), sonst links
-            nx = x if (x >= 600 or it['y'] < 100) else x + BOX_W - BOX_W * sx
-            out.append(dict(it, x=int(round(nx)), y=int(round(ny))))
+                stacks.append([])
+            stacks[-1].append(it)
             prev_y = it['y']
+    out = []
+    for stack in stacks:
+        top = stack[0]['y']
+        f = sx if any(needs_wide(it['id']) for it in stack) else sx_short
+        w = int(round(BOX_W * f))
+        for it in stack:
+            x = it['x']
+            ny = top + (it['y'] - top) * sy
+            nx = x if (x >= 600 or it['y'] < 100) else x + BOX_W - w
+            out.append(dict(it, x=int(round(nx)), y=int(round(ny)), w=w))
     return out
 
 
@@ -159,7 +171,7 @@ def make_dark(image_bytes, min_area=25000):
 
 
 def js_array(rows):
-    return '[' + ','.join('[%d,%d,%s,%s]' % (x, y, js_str(e), js_str(t)) for x, y, e, t in rows) + ']'
+    return '[' + ','.join('[%d,%d,%s,%s,%d]' % (x, y, js_str(e), js_str(t), w) for x, y, e, t, w in rows) + ']'
 
 
 def js_str(s):
@@ -167,17 +179,15 @@ def js_str(s):
 
 
 def build_yaml(items, unit, image_url, dark_image_url, sx=1.0, sy=1.0):
-    bw, bh, fs = round(BOX_W * sx), round(BOX_H * sy), round(FONT_PX * sy, 1)
+    bh, fs = round(BOX_H * sy), round(FONT_PX * sy, 1)
     vals, acts, entities = [], [], []
     for it in items:
         ent = entity_for(it['id'], unit)
         if ent is None:
             continue
         entities.append(ent)
-        if it['id'].startswith('A'):
-            acts.append((it['x'], it['y'], ent, it['text']))
-        else:
-            vals.append((it['x'], it['y'], ent, it['text']))
+        row = (it['x'], it['y'], ent, it['text'], it.get('w', BOX_W))
+        (acts if it['id'].startswith('A') else vals).append(row)
 
     js = f"""${{ (() => {{
   const h = (typeof hass !== 'undefined') ? hass : this.hass;
@@ -201,11 +211,11 @@ def build_yaml(items, unit, image_url, dark_image_url, sx=1.0, sy=1.0):
   const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;');
   const vals = {js_array(vals)};
   const acts = {js_array(acts)};
-  const box = (x, y, t, f) => '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="{bw - 2}" height="{bh - 2}" fill="' + f + '" stroke="' + bd + '" stroke-width="2"/>'
+  const box = (x, y, t, f, w) => '<rect x="' + (x + 1) + '" y="' + (y + 1) + '" width="' + (w - 2) + '" height="{bh - 2}" fill="' + f + '" stroke="' + bd + '" stroke-width="2"/>'
     + '<text x="' + (x + {round(5 * sx)}) + '" y="' + (y + {round(bh * 0.5 + fs * 0.36, 1)}) + '" font-family="Calibri, Segoe UI, Arial, sans-serif" font-size="{fs}" font-weight="bold" fill="' + fg + '">' + esc(t) + '</text>';
   let s = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {IMG_W} {IMG_H}" width="{IMG_W}" height="{IMG_H}">';
-  for (const [x, y, e, l] of vals) s += box(x, y, fmt(e) + ' ' + l, bg);
-  for (const [x, y, e, l] of acts) s += box(x, y, l, active(e) ? on : bg);
+  for (const [x, y, e, l, w] of vals) s += box(x, y, fmt(e) + ' ' + l, bg, w);
+  for (const [x, y, e, l, w] of acts) s += box(x, y, l, active(e) ? on : bg, w);
   s += '</svg>';
   return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(s);
 }})() }}"""
@@ -235,8 +245,9 @@ def render_preview(image_bytes, items, unit, values, font, path, sx=1.0, sy=1.0)
     from PIL import Image
     import io
     im = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-    bw, bh = round(BOX_W * sx), round(BOX_H * sy)
+    bh = round(BOX_H * sy)
     for it in items:
+        bw = it.get('w', BOX_W)
         ent = entity_for(it['id'], unit)
         if ent is None:
             continue
@@ -262,6 +273,8 @@ def main():
     ap.add_argument('--preview', nargs='*', metavar='ID=WERT', help='Vorschau mit Beispielwerten, z.B. S1=62.7°C A1=1')
     ap.add_argument('--scale-x', type=float, default=1.5, help='Breite der Kaestchen relativ zur Remote (Standard 1.5)')
     ap.add_argument('--scale-y', type=float, default=1.35, help='Hoehe und Schrift relativ zur Remote (Standard 1.35)')
+    ap.add_argument('--scale-x-short', type=float, default=1.2,
+                    help='Breite der Kaestchen, die nur Temperaturen zeigen (Standard 1.2)')
     args = ap.parse_args()
 
     if args.remote:
@@ -270,7 +283,7 @@ def main():
     else:
         image = open(args.files[0], 'rb').read()
         positions = open(args.files[1], 'rb').read()
-    items = scale_items(load_items(positions), args.scale_x, args.scale_y)
+    items = scale_items(load_items(positions), args.scale_x, args.scale_y, args.scale_x_short)
     os.makedirs(args.out, exist_ok=True)
     open(os.path.join(args.out, 'schema.jpg'), 'wb').write(image)
     open(os.path.join(args.out, 'schema_dark.jpg'), 'wb').write(make_dark(image))
