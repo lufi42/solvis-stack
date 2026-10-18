@@ -90,11 +90,11 @@ def needs_wide(item_id):
     return item_id.startswith(('A', 'P')) or item_id in ('SE', 'SL', 'S17', 'S18')
 
 
-def scale_items(items, sx, sy, sx_short):
-    """Kaestchen vergroessern: Hoehe/Schrift mal sy, Breite mal sx bzw. sx_short fuer Stapel, die nur
+def scale_items(items, sx, sx_short, pitch_factor):
+    """Kaestchen verschieben und verbreitern: Breite mal sx bzw. sx_short fuer Stapel, die nur
     Temperaturen enthalten. Kaestchen links der Warmwasser-/Heizkreis-Rahmen (x < 600, also Solar, Kessel,
     Speicher) wachsen nach links, die rechten und die Aussentemperatur (y < 100) nach rechts. Gestapelte
-    Kaestchen (gleiche x, Abstand PITCH) behalten ihre Oberkante, werden mit sy gespreizt und sind gleich breit."""
+    Kaestchen (gleiche x, Abstand PITCH) behalten ihre Oberkante, werden mit pitch_factor gespreizt und sind gleich breit."""
     by_col = {}
     for it in sorted(items, key=lambda i: (i['x'], i['y'])):
         by_col.setdefault(it['x'], []).append(it)
@@ -113,7 +113,7 @@ def scale_items(items, sx, sy, sx_short):
         w = int(round(BOX_W * f))
         for it in stack:
             x = it['x']
-            ny = top + (it['y'] - top) * sy
+            ny = top + (it['y'] - top) * pitch_factor
             nx = x if (x >= 600 or it['y'] < 100) else x + BOX_W - w
             out.append(dict(it, x=int(round(nx)), y=int(round(ny)), w=w))
     return out
@@ -178,8 +178,8 @@ def js_str(s):
     return "'" + str(s).replace('\\', '\\\\').replace("'", "\\'") + "'"
 
 
-def build_yaml(items, unit, image_url, dark_image_url, sx=1.0, sy=1.0):
-    bh, fs = round(BOX_H * sy), round(FONT_PX * sy, 1)
+def build_yaml(items, unit, image_url, dark_image_url, sx=1.0, sh=1.0, sf=1.0):
+    bh, fs = round(BOX_H * sh), round(FONT_PX * sf, 1)
     vals, acts, entities = [], [], []
     for it in items:
         ent = entity_for(it['id'], unit)
@@ -241,11 +241,11 @@ def label_image(text, fill, font, bw=BOX_W, bh=BOX_H):
     return im
 
 
-def render_preview(image_bytes, items, unit, values, font, path, sx=1.0, sy=1.0):
+def render_preview(image_bytes, items, unit, values, font, path, sh=1.0):
     from PIL import Image
     import io
     im = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-    bh = round(BOX_H * sy)
+    bh = round(BOX_H * sh)
     for it in items:
         bw = it.get('w', BOX_W)
         ent = entity_for(it['id'], unit)
@@ -272,9 +272,12 @@ def main():
     ap.add_argument('--www', default='/local/solvis/', help='URL-Pfad der Bilder in HA (Standard /local/solvis/)')
     ap.add_argument('--preview', nargs='*', metavar='ID=WERT', help='Vorschau mit Beispielwerten, z.B. S1=62.7°C A1=1')
     ap.add_argument('--scale-x', type=float, default=1.5, help='Breite der Kaestchen relativ zur Remote (Standard 1.5)')
-    ap.add_argument('--scale-y', type=float, default=1.35, help='Hoehe und Schrift relativ zur Remote (Standard 1.35)')
     ap.add_argument('--scale-x-short', type=float, default=1.2,
                     help='Breite der Kaestchen, die nur Temperaturen zeigen (Standard 1.2)')
+    ap.add_argument('--scale-h', type=float, default=1.15, help='Hoehe der Kaestchen relativ zur Remote (Standard 1.15)')
+    ap.add_argument('--scale-font', type=float, default=1.35, help='Schriftgroesse relativ zur Remote (Standard 1.35)')
+    ap.add_argument('--scale-pitch', type=float, default=1.25,
+                    help='Abstand gestapelter Kaestchen relativ zur Remote (Standard 1.25)')
     args = ap.parse_args()
 
     if args.remote:
@@ -283,19 +286,20 @@ def main():
     else:
         image = open(args.files[0], 'rb').read()
         positions = open(args.files[1], 'rb').read()
-    items = scale_items(load_items(positions), args.scale_x, args.scale_y, args.scale_x_short)
+    items = scale_items(load_items(positions), args.scale_x, args.scale_x_short, args.scale_pitch)
     os.makedirs(args.out, exist_ok=True)
     open(os.path.join(args.out, 'schema.jpg'), 'wb').write(image)
     open(os.path.join(args.out, 'schema_dark.jpg'), 'wb').write(make_dark(image))
 
     www = args.www if args.www.endswith('/') else args.www + '/'
-    yaml_text = build_yaml(items, args.unit, www + 'schema.jpg', www + 'schema_dark.jpg', args.scale_x, args.scale_y)
+    yaml_text = build_yaml(items, args.unit, www + 'schema.jpg', www + 'schema_dark.jpg', args.scale_x, args.scale_h,
+                           args.scale_font)
     open(os.path.join(args.out, 'anlagenschema.yaml'), 'w', encoding='utf-8', newline='\n').write(yaml_text)
 
     if args.preview is not None:
         values = dict(kv.split('=', 1) for kv in args.preview)
-        render_preview(image, items, args.unit, values, load_font(round(FONT_PX * args.scale_y)),
-                       os.path.join(args.out, 'preview.png'), args.scale_x, args.scale_y)
+        render_preview(image, items, args.unit, values, load_font(round(FONT_PX * args.scale_font)),
+                       os.path.join(args.out, 'preview.png'), args.scale_h)
 
     print(f'{len(items)} Elemente, Dateien in {args.out}:')
     for it in items:
