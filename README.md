@@ -49,17 +49,17 @@ git clone --recurse-submodules <url>
 git submodule update --init --recursive
 ```
 
-## SolvisSmartHomeServer bauen
+## solvis2mqtt bauen
 
-Es gibt kein Ant/Maven im PATH. Die Quellen sind **Cp1252**-kodiert, nicht UTF-8:
+Ohne Ant/Maven, nur mit einem JDK (8 oder neuer); die Quellen sind **Cp1252**-kodiert:
 
 ```sh
-cd SolvisSmartHomeServer
-find src -name '*.java' > /tmp/files.txt
-javac -encoding Cp1252 --release 8 -d build/classes -cp "$(ls lib/*.jar | tr '\n' ';')" @/tmp/files.txt
+cd SolvisSmartHomeServer      # Submodul-Ordner, Repo lufi42/solvis2mqtt
+scripts/build-jar.sh          # erzeugt solvis2mqtt.jar
 ```
 
-Alternativ `build.xml` mit Ant oder Eclipse.
+Fertige Jars und das Docker-Image (`ghcr.io/lufi42/solvis2mqtt`) baut GitHub Actions bei jedem Push, Releases
+liegen unter <https://github.com/lufi42/solvis2mqtt/releases>.
 
 ## Lizenz
 
