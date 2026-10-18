@@ -89,21 +89,44 @@ def load_font(size):
     return ImageFont.load_default()
 
 
-def make_dark(image_bytes):
-    """Dark-Mode-Variante: (fast) weisser Hintergrund wird dunkel, Linien und Symbole bleiben."""
+def make_dark(image_bytes, min_area=25000):
+    """Dark-Mode-Variante: grosse (fast) weisse Flaechen werden dunkel (Hintergrund, Innenraum der Rahmen),
+    kleine weisse Flaechen (Badewanne, Heizkoerper, Symbole) bleiben weiss."""
     from PIL import Image
     import io
     im = Image.open(io.BytesIO(image_bytes)).convert('RGB')
-    px = im.load()
     w, h = im.size
+    px = im.load()
+    near = bytearray(w * h)       # 1 = weiss bis sehr hellgrau
     for y in range(h):
         for x in range(w):
             r, g, b = px[x, y]
             lo = min(r, g, b)
             if lo >= 232 and max(r, g, b) - lo <= 12:
-                # weiss bis sehr hellgrau -> dunkel, mit weichem Uebergang
-                k = (lo - 232) / 23.0
-                px[x, y] = tuple(int(c * (1 - k) + d * k) for c, d in zip((r, g, b), DARK_BG))
+                near[y * w + x] = 1
+    seen = bytearray(w * h)
+    for start in range(w * h):
+        if not near[start] or seen[start]:
+            continue
+        # zusammenhaengende Flaeche einsammeln (4er-Nachbarschaft)
+        comp, stack = [], [start]
+        seen[start] = 1
+        while stack:
+            i = stack.pop()
+            comp.append(i)
+            x, y = i % w, i // w
+            for j in ((i - 1) if x > 0 else -1, (i + 1) if x < w - 1 else -1,
+                      (i - w) if y > 0 else -1, (i + w) if y < h - 1 else -1):
+                if j >= 0 and near[j] and not seen[j]:
+                    seen[j] = 1
+                    stack.append(j)
+        if len(comp) < min_area:
+            continue
+        for i in comp:
+            x, y = i % w, i // w
+            r, g, b = px[x, y]
+            k = (min(r, g, b) - 232) / 23.0   # weicher Uebergang an Kanten
+            px[x, y] = tuple(int(c * (1 - k) + d * k) for c, d in zip((r, g, b), DARK_BG))
     out = io.BytesIO()
     im.save(out, 'JPEG', quality=92)
     return out.getvalue()
