@@ -9,6 +9,8 @@ bzw. solvis2mqtt (<domain>.solvis_<unit>_<kanal>):
   picture-elements mit dem Schema als Hintergrund und EINEM Overlay-Element, einem SVG, das die
   config-template-card (HACS, iantrich/config-template-card) aus den aktuellen Zustaenden erzeugt.
   SVG-Text und -Rahmen skalieren exakt mit dem Bild, bleiben scharf und folgen dem Dark Mode von HA.
+  Hinweis: config-template-card wertet das Template per eval im Kontext der Karte aus; verfuegbar sind
+  states, user, vars und this.hass (kein freies hass).
 
 Aufruf:
   anlagenschema.py --remote http://<ip> [--user solvis --password solvis] --unit SolvisMax --out ./schema
@@ -153,7 +155,8 @@ def build_yaml(items, unit, image_url, dark_image_url):
             vals.append((it['x'], it['y'], ent, it['text']))
 
     js = f"""${{ (() => {{
-  const dark = !!(hass.themes && hass.themes.darkMode);
+  const h = (typeof hass !== 'undefined') ? hass : this.hass;
+  const dark = !!(h && h.themes && h.themes.darkMode);
   const bg = dark ? '#2e2e2e' : '#E6E6E6', bd = dark ? '#8a8a8a' : '#808080';
   const fg = dark ? '#d8d8d8' : '#707070', on = dark ? '#3c8a3c' : '#A0ED80';
   const fmt = (id) => {{
