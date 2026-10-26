@@ -187,6 +187,8 @@ CRC-16/KERMIT über Byte 0..8); eigene Anlage: 52 613 → 56 059 in einem Jahr.
 
 Werkzeug: [`homeassistant/tools/remote_logger.py`](../homeassistant/tools/remote_logger.py) lädt `logging.txt`, prüft
 die CRC und schreibt eine CSV mit einer Spalte je Kanal (Definitionen aus der `control.xml`).
+[`homeassistant/tools/ha_import_logger.py`](../homeassistant/tools/ha_import_logger.py) überträgt die CSV als
+Stundenwerte in die Langzeitstatistik von Home Assistant (nur vor der ersten vorhandenen Stunde, wahlweise ersetzend).
 
 ## Weitere Schnittstellen der Remote
 
