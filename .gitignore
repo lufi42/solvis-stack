@@ -13,3 +13,6 @@ LonScan.cfg
 # OS / Editor
 .DS_Store
 Thumbs.db
+
+# Fremde Firmware (Solvis/Prozeda), nur lokal fuer die Protokollanalyse, nie veroeffentlichen
+vendor-firmware/

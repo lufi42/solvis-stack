@@ -14,8 +14,8 @@ Die Software ist für beliebige Solvis-Konfigurationen gedacht; die ALS-MAX-Kapi
 | --- | --- | --- | --- |
 | [SolvisSmartHomeServer/](SolvisSmartHomeServer) | SolvisMax / SC2 lesen und steuern, HA-Discovery | SolvisRemote-Web-GUI (OCR + simulierte Klicks) → MQTT | läuft, HA-Discovery eingebaut |
 | [lino-lon/](lino-lon) | Lino über LON auslesen (und eingeschränkt steuern) | ESP32 am internen LON-Bus (Servicestecker SST) → MQTT | Konzept, Hardware offen |
-| [homeassistant/](homeassistant) | HA-Konfiguration für beide Teile | – | Gerüst |
-| [docs/](docs) | Kopplung Max↔Lino, LON-Protokoll, Fehlercodes, SC2-Screens, Templates | – | |
+| [homeassistant/](homeassistant) | HA-Konfiguration, Werkzeuge (Anlagenschema-Karte, Datenlogger der Remote als CSV) | – | Gerüst |
+| [docs/](docs) | Kopplung Max↔Lino, LON-Protokoll, [Protokoll SC2↔SolvisRemote](docs/remote-protokoll.md), Fehlercodes, SC2-Screens, Templates | – | |
 | [third_party/](third_party) | Referenz-Repos von g3gg0 (MESWiFi, LonScan, LonDissector) | – | Submodule, nicht ändern |
 
 ## Wer steuert was
