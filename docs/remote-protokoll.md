@@ -134,34 +134,62 @@ nicht als Tabelle (wahrscheinlich). Eine davon stellt die Uhr aus Unix-Zeit (nur
 
 ## Netbox-Modus (MA150)
 
+Die SolvisNetbox (2012–2014, ca. 700 €, Prozeda conexio der 1. Generation, ARM-Linux, App „MySol“) hing mit einem
+1:1-Patchkabel an derselben Buchse wie später die Remote. Ihre Firmware (`wm.zip`, Programm `reglerd`, nicht
+gestrippt) liegt noch auf solvis.de; die folgenden Angaben sind aus beiden Seiten abgeglichen.
+
 Die Einstellung „Datenprotokoll wählen“ der MA150 hat drei Werte: aus, **1 = Remote**, **2 = Netbox**. Die Modi
-**schließen sich aus** (sicher): Im Netbox-Modus sendet die SC2 weder Displaybild noch den Touch-Austausch, sondern
-2× pro Sekunde einen 112-Byte-Rahmen mit 375 kbit/s und liest dabei 108 Byte (ohne Synchronwort) zurück. MA205 hat den
-Netbox-Modus nicht mehr.
+**schließen sich aus** (sicher): Im Netbox-Modus sendet die SC2 weder Displaybild noch Touch-Austausch, sondern
+2× pro Sekunde einen 112-Byte-Rahmen (SPI-Master, Mode 3, MSB zuerst, **375 kbit/s**) und liest dabei die Antwort
+der Gegenstelle (Byte 4..111) mit. MA205 hat den Netbox-Modus nicht mehr.
 
-Rahmen in beide Richtungen wie oben (`AA 55 55 AA`, Kommando, Unterkommando, CRC-16/KERMIT über Byte 0..109).
+**Elektrisch:** Die Netbox selbst liest über einen UART mit 19 200 Bd; dazwischen sitzt auf ihrer Platine
+wahrscheinlich ein Umsetzer, der als SPI-Slave die ganzen Rahmen puffert. Ein eigener Teilnehmer muss also ein
+**SPI-Slave mit fertig vorgeladenem 112-Byte-Rahmen** sein. Die Antwort erreicht die SC2 beim nächsten Austausch.
 
-**SC2 → Netbox:** je nach Zustand der Datenrahmen `05 05`, Parameterblöcke (`08 07` / `09 07`, Werte ab dem
-angefragten Index) oder Zeitprogrammblöcke (`08 08` / `09 08`, Sätze à 43 Byte).
+**Rahmen** wie oben: `AA 55 55 AA`, Kommando, Unterkommando, Nutzdaten, CRC-16/KERMIT über Byte 0..109
+(Low-Byte in 110).
 
-**Netbox → SC2** (CRC-geprüft):
+### SC2 → Netbox
 
-| Befehl | Bedeutung | Belastbarkeit |
+| Rahmen | Inhalt | Belastbarkeit |
 | --- | --- | --- |
-| `30 30` | Lesen: Startindex für den nächsten Parameterblock (max. 0x1FB) | sicher |
-| `08 87` | **Parameter schreiben**: Paare (Index 16 bit, Wert 16 bit), Ende mit Index `FFFF`; Index < 0x200; der Wert wird auf Min/Max des Parameters begrenzt und **sofort übernommen** | Ablauf sicher, Byte-Offsets wahrscheinlich |
-| `08 88` | **Zeitprogramme schreiben**: Programm 0..5, Sätze à 43 Byte, Schaltpunkte in Viertelstunden (0..95, ≥ 96 = aus) | wahrscheinlich |
+| `05 05` | Messwerte wie im Remote-Modus | sicher |
+| `08 07` | Parameter, laufend der Reihe nach: 24 × (Index LE, Wert LE) ab Byte 6, Index `FFFF` = leer | sicher |
+| `09 07` | gleiches Format, **Änderungsmeldung** (z. B. nach Bedienung am Display) | sicher |
+| `09 08` / `08 08` | Zeitprogramme: zwei Sätze, Byte 6 bzw. 49 = Programmnummer, dann 21 Worte | sicher |
 
-Eine ausdrückliche Bestätigung gibt es nicht; der nächste Rahmen der SC2 zeigt den neuen Stand. Ob und wann
-geschriebene Werte dauerhaft ins DataFlash gehen, ist offen.
+### Netbox → SC2
 
-**Parametertabelle:** 14-Byte-Sätze (Text-Id, Gruppe/Divisor, Hilfetext-Id, Min, Wert, Max, Default), dieselbe
-Tabelle wie für das Menü; über 500 Indizes. Die Zuordnung Index → Menüpunkt ist teilweise geklärt (z. B. Solar:
-Kollektor max 90–200 °C, dT-Start/Stopp; Warmwasser-Sollwert 10–65 °C, Default 48 — passt zu C05). Die übrigen
-Sollwerte (Heizkreise, Betriebsarten) sind noch zuzuordnen.
+| Rahmen | Inhalt | Belastbarkeit |
+| --- | --- | --- |
+| `08 87` | **Parameter schreiben:** bis zu 24 × (Index LE, Wert LE) ab Byte 6, `FF FF` beendet; Index ≥ 0x200 wird übergangen; der Wert wird nur übernommen, wenn Min ≤ Wert ≤ Max, sonst **ohne Meldung verworfen** | sicher |
+| `30 30` | Index LE in Byte 6/7, `00 00`, Wert LE in Byte 10/11: schreibt den Wert, wenn er im Bereich liegt, und setzt die laufende Parameterausgabe auf diesen Index (ein Wert außerhalb des Bereichs macht daraus eine reine Leseanforderung) | wahrscheinlich |
+| `08 88` | **Zeitprogramme schreiben:** Byte 6 = Programm 0..5, dann je Tag (7) und Zeitfenster (3) Start- und Endbyte in Viertelstunden 0..0x5F; ein Paar wird nur übernommen, wenn beide Bytes < 0x60 sind (`FF` = unverändert) | sicher |
 
-**Bedeutung:** Ein eigener Busteilnehmer im Netbox-Modus könnte Messwerte lesen **und Sollwerte direkt schreiben**,
-ohne Touch-Simulation. Dafür entfallen Displaybild und Remote (inkl. Logger und Web-Oberfläche).
+Eine Bestätigung gibt es nicht; geänderte Werte erscheinen im nächsten `09 07`.
+
+### Parameter
+
+Die Netbox speichert Parameter nur unter „0x4101 + Index“ ohne Namen; die Bedeutung kommt aus der Parametertabelle der
+SC2 (14-Byte-Sätze: Text, Gruppe/Divisor, Hilfetext, Min, Wert, Max, Default, über 500 Indizes). Bisher zugeordnet:
+
+| Funktion | Index | Bereich / Default | Belastbarkeit |
+| --- | --- | --- | --- |
+| Warmwasser-Sollwert | 42 | 10…65, 48 | wahrscheinlich |
+| Zirkulation Betriebsart | 326 | 0…3 | wahrscheinlich |
+| Zirkulation Solltemperatur | 325 | 1…99, 38 | wahrscheinlich |
+| Zirkulation Puls-Laufzeit | 329 | 0…300, 90 | wahrscheinlich |
+| Heizkreis-Blöcke HK1/HK2/HK3 | ab 182 / 228 / 274 | je 46 Parameter, gleicher Aufbau | Aufbau sicher |
+| Offset ±5 je Heizkreis | 198 / 244 / 290 | −5…5, 0 | wahrscheinlich |
+| Tag- / Absenktemperatur | Block +6/+7 / +8 | 5…30, 20 / 16 | Vermutung |
+
+Nicht gefunden: Betriebsart der Heizkreise und „1x Nachheizen“ — vermutlich keine Parameter, also über `08 87` nicht
+schreibbar. Bestätigen lässt sich jede Zuordnung einfach: Wert am Display ändern und den `09 07`-Rahmen mitlesen.
+
+**Bewertung:** Ein eigener Teilnehmer im Netbox-Modus bekäme alle Messwerte und alle Parameter (laufend, ohne
+Bildschirm-Erkennung) und könnte Parameter und Zeitprogramme direkt schreiben. Dafür entfallen Remote, Displaybild,
+Logger und die Betriebsart-Umschaltung per Touch.
 
 ## Netzbaugruppe (Flachband)
 
@@ -221,11 +249,17 @@ am besten in ein eigenes Netzsegment; Zugangsdaten ändern.
 * **Eigener Busteilnehmer statt Remote:** Mit Mode 3, ≤ 2,4 Mbit/s und dem Rahmenformat oben kann ein Mikrocontroller
   (z. B. ESP32 als SPI-Slave) die Remote ersetzen: Messwerte 4×/s, Displaybild 2×/s, Touch und Tasten senden. Passiv
   mitlesen geht ohne Eingriff, sobald die RJ45-Belegung bekannt ist.
-* **Netbox-Modus:** direkter Schreibweg für Sollwerte, aber nur anstelle der Remote (siehe oben).
+* **Netbox-Modus:** direkter Schreibweg für Parameter und Zeitprogramme (Warmwasser-Soll, Heizkreis-Offsets,
+  Zirkulation, Tag-/Absenktemperatur), aber nur anstelle der Remote und ohne Betriebsart/Nachheizen (siehe oben).
+* **Hardware für einen eigenen Teilnehmer:** Mikrocontroller als SPI-Slave (Mode 3, bis 2,4 Mbit/s im Remote-Modus,
+  375 kbit/s im Netbox-Modus, z. B. ESP32), RJ45-Anschluss und — falls die Leitung differenziell ist —
+  RS-422-Empfänger/-Treiber für Takt, Daten und Select. Belegung und Pegel vorher an der SC2-Platine bzw. der
+  Remote-Buchse messen.
 
 ## Offene Punkte
 
-* Parameterindex → Menüpunkt für Heizkreise und Betriebsarten; genaue Byte-Offsets von `08 87`/`08 88` am Bus bestätigen.
+* Parameterindex → Menüpunkt vollständig zuordnen (am einfachsten: Wert am Display ändern, `09 07` mitlesen).
+* Lässt sich die Betriebsart der Heizkreise im Netbox-Modus überhaupt setzen?
 * Belegung der RJ45-Adern (Takt, MOSI, MISO, Select) und Pegel — Durchgangsprüfung an der SC2-Platine.
 * Bedeutung von A2 × 0,25 (Pumpe in %?) an der Anlage prüfen.
 * Bildformat `0B 04`.
