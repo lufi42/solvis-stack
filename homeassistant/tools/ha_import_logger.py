@@ -10,7 +10,8 @@ Standard: nur Stunden VOR der ersten vorhandenen Stunde der jeweiligen Entity (n
 --overwrite KANAL[,KANAL]: fuer diese Kanaele alle Stunden des Loggers schreiben (ersetzt vorhandene Werte,
 z. B. nach einer Korrektur der Skalierung). --scale KANAL=FAKTOR rechnet Werte vorher um.
 
-Ohne --apply ist es ein Probelauf. Der Token braucht Admin-Rechte (Import ist eine Admin-Funktion).
+Ohne --apply ist es ein Probelauf. Der Recorder arbeitet Importe asynchron ab; ein direkt folgender Lauf sieht die
+neuen Stunden eventuell noch nicht (doppelter Import derselben Werte schadet nicht). Der Token braucht Admin-Rechte (Import ist eine Admin-Funktion).
 
 Aufruf:
   HA_TOKEN=... ha_import_logger.py --ha ws://192.168.0.70:8123 --csv logger.csv --unit SolvisMax [--apply]
