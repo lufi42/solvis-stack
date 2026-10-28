@@ -80,18 +80,20 @@ Byte 107..109 Datum yy mm dd
 Byte 110..111 CRC-16/KERMIT
 ```
 
-**Statusbytes (an der eigenen Anlage aus 30 Tagen Logger abgeleitet, wahrscheinlich):**
+**Statusbytes (aus 30 Tagen Logger abgeleitet und am 28.10.2026 an der Anlage getestet):**
 
 | Byte | Bedeutung | Werte |
 | --- | --- | --- |
-| 92 | Anforderung an den Wärmeerzeuger | 1 = keine, 2 = Warmwasser, 3 = Heizung (deckt sich mit O-1 = 191 bzw. 153) |
-| 94 | Kessel-Ladepumpe (A7) | 1 = aus, 2 = an |
-| 97 | Zustand Heizkreis 1 | 2 = Timer, 3 = Tag, 8 = gesperrt wegen Warmwasser-Vorrang, 5 = beim Learning gesehen (Nacht oder Standby) |
-| 98 | Zustand Heizkreis 2 | wie Byte 97; Beleg: 10.10.2026 18:30 → 3 (HK2 hing auf Tag), 12.10.2026 10:50 → 2 (Timer per MQTT gesetzt) |
+| 92 | Anforderung an den Wärmeerzeuger (sicher) | 1 = keine, 2 = Warmwasser, 3 = Heizung (deckt sich mit O-1 = 191 bzw. 153) |
+| 94 | Kessel-Ladepumpe (A7) an der eigenen Anlage; in `control.xml` als O-5 geführt (bei Max 7: PWM-Warmwasserpumpe) | 1 = aus, 2 = an |
+| 97 | Zustand Heizkreis 1 (sicher) | **2 = Timer, 3 = Tag, 4 = Nacht, 5 = Standby**, 8 = gesperrt wegen Warmwasser-Vorrang |
+| 98 | Zustand Heizkreis 2 (sicher) | wie Byte 97; Beleg: 10.10.2026 18:30 → 3 (HK2 hing auf Tag), 12.10.2026 10:50 → 2 |
+| 99 | Zustand Heizkreis 3 (wahrscheinlich, nach Firmware-Layout) | wie Byte 97; ohne HK3 steht dort 1 |
 | 89, 91, 93 | wechseln häufig zwischen 0, 1, 2, 4 | vermutlich Mischer-/Pumpenzustände der Heizkreise |
 
 Die Betriebsart der Heizkreise ist damit **ohne Bilderkennung** aus dem Datenrahmen lesbar (außer während des
-Warmwasser-Vorrangs). Sollwerte und Zeitprogramme stehen dagegen **nicht** im Datenrahmen: Die SC2 baut die
+Warmwasser-Vorrangs). solvis2mqtt liest die Bytes seit 28.10.2026 als Kanäle `Z01` (Byte 92) und `Z02`–`Z04`
+(Byte 97–99). Sollwerte und Zeitprogramme stehen dagegen **nicht** im Datenrahmen: Die SC2 baut die
 Parameter-/Zeitprogrammrahmen zwar in jedem Modus, gibt den Puffer danach aber erst nach einem Netbox-Austausch wieder
 frei — im Remote-Modus geht nach dem Start höchstens ein solcher Rahmen über den Bus (sicher, MA150).
 
